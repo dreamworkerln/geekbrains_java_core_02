@@ -48,7 +48,7 @@ public class Team implements Iterable<Competitor>{
 
     public void getAllInfo() {
 
-        System.out.println("Team \"" + name +  "\" members:");
+        System.out.println("Team \"" + name +  "\" members results:");
 
         for (Competitor c : list) {
             c.info();

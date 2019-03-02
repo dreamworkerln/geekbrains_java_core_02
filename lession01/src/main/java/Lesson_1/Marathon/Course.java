@@ -25,9 +25,7 @@ public class Course {
 
     public void doIt(Team team) {
 
-        System.out.println("Processing testees:");
-
-        //System.out.println(obstacle.getClass().getSimpleName());
+        System.out.println("Processing \"" + team.getName() + "\":");
 
         for (Competitor competitor : team) {
             
