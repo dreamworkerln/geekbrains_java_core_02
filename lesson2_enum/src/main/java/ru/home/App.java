@@ -8,15 +8,19 @@ public class App
 {
     public static void main(String[] args ) {
 
-        DayOfWeek current = DayOfWeek.Tuesday;
+        System.out.println(getWorkingHours(DayOfWeek.Tuesday));
+    }
+    
+    static int getWorkingHours(DayOfWeek current) {
 
-        int total = 0;
-
+        int result = 0;
         for (int i = current.ordinal(); i < DayOfWeek.values().length; i++) {
 
             DayOfWeek day = DayOfWeek.values()[i];
-            total += day.getHours();
+            result += day.getHours();
         }
-        System.out.println(total);
+
+        return result;
     }
+
 }
