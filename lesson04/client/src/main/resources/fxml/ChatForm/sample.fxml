@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?scenebuilder-stylesheet Styles.css?>
+
+<VBox alignment="center" style="-fx-background-color: #434241" xmlns="http://javafx.com/javafx/8.0.60" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.home.geekbrains.java.core_02.client.gui.Controller">
+
+    <stylesheets><URL value="@Styles.css" /> </stylesheets>
+
+    <HBox>
+        <Button fx:id="btnConnect" onAction="#connect" text="Connect" />
+        <HBox HBox.hgrow="ALWAYS" maxWidth="Infinity" alignment="BASELINE_RIGHT">
+            <!--fitHeight="150.0" fitWidth="200.0" layoutX="61.0" layoutY="83.0" pickOnBounds="true"-->
+            <ImageView fx:id="imageView" fitHeight="30" fitWidth="200.0" preserveRatio="true" />
+        </HBox>
+    </HBox>
+
+    <TextArea fx:id="textArea" editable="false" promptText="" text="" VBox.vgrow="ALWAYS" />
+
+    <HBox>
+        <TextField fx:id="textField" onAction="#sendMsg" promptText="Enter message ..." HBox.hgrow="ALWAYS" />
+        <Button fx:id="btnSend" onAction="#sendMsg" text="Send" />
+    </HBox>
+</VBox>
