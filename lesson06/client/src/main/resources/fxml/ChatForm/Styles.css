@@ -1,37 +1,38 @@
-#btnSend {
-/*    -fx-text-fill: green;
-    -fx-background-image: url("img/apply.png");
-    -fx-background-size: 20 20;
-    -fx-background-size: 100% 100%;
-    -fx-background-color: transparent;*/
+#main {
+    -fx-background-color: #434241;
+}
 
+
+#btnSend {
     -fx-pref-height: 30px;
-    -fx-background-color: #1f4e57;
+    -fx-background-color: #335851;
 }
 
 #btnSend:hover {
-    -fx-text-fill: #1d363f;
+    /*-fx-text-fill: #1d363f;*/
 }
 
 
 #btnConnect {
     -fx-pref-height: 30px;
-    -fx-background-color: #406762;
+    -fx-background-color: #335851;
 }
 
 #imageView {
     -fx-image: url("/fxml/ChatForm/149087563218162737_png.png");
-
-
 }
 
 
+#label {
+    -fx-font-size: 14px;
+    -fx-text-fill: #7D978D;
+}
 
 .root {
     -fx-control-inner-background: #434241;
-    -fx-highlight-fill: #77fff5;
-
+    -fx-highlight-fill: #434241;
 }
+
 
 
 
@@ -39,18 +40,7 @@
     -fx-background-insets: 0;
     -fx-font-family: Consolas;
     -fx-control-inner-background: #434241;
-    -fx-highlight-fill: #406762;
-    -fx-highlight-text-fill: #406762;
-    -fx-text-fill: #D0F0E5;
-    -fx-font-size: 16px;
-}
-
-
-.text-field {
-    -fx-background-insets: 0;
-    -fx-font-family: Consolas;
-    -fx-control-inner-background: #434241;
-    -fx-highlight-fill: #406762;
+    -fx-highlight-fill: #335851;
     -fx-highlight-text-fill: #D0F0E5;
     -fx-text-fill: #D0F0E5;
     -fx-prompt-text-fill: #7d978d;
@@ -60,7 +50,31 @@
 
 
 
+.text-field {
+    -fx-background-insets: 0;
+    -fx-font-family: Consolas;
+    -fx-control-inner-background: #434241;
+    -fx-highlight-fill: #335851;
+    -fx-highlight-text-fill: #D0F0E5;
+    -fx-text-fill: #D0F0E5;
+    -fx-prompt-text-fill: #7d978d;
+    -fx-font-size: 16px;
+}
+
+
 .scroll-bar{
     -fx-background-color: #434241;
     -fx-background-radius: 2em;
+}
+
+.scroll-bar > .thumb {
+    -fx-background-color: #335851;
+}
+
+.scroll-bar > .corner {
+    -fx-background-color: #434241;
+}
+
+.scroll-bar > .decrement-button {
+    -fx-background-color: #434241;
 }

@@ -1,4 +1,4 @@
-package ru.home.geekbrains.java.core_02.lesson04.server;
+package ru.home.geekbrains.java.core_02.lesson06.server;
 
 import org.apache.log4j.Logger;
 import java.lang.invoke.MethodHandles;

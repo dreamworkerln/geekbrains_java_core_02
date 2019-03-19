@@ -5,10 +5,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>ru.home.geekbrains.java.core_02</groupId>
-  <artifactId>lesson04.server</artifactId>
+  <artifactId>lesson06.server</artifactId>
   <version>1.0-SNAPSHOT</version>
 
-  <name>lesson04.server</name>
+  <name>lesson06.server</name>
   <!-- FIXME change it to the project's website -->
   <url>http://www.example.com</url>
 

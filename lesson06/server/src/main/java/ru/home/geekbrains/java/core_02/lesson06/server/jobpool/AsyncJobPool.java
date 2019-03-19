@@ -1,4 +1,4 @@
-package ru.home.geekbrains.java.core_02.lesson04.server.jobpool;
+package ru.home.geekbrains.java.core_02.lesson06.server.jobpool;
 
 import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
@@ -13,7 +13,7 @@ import java.util.function.Supplier;
 
 
 /**
- * Async job pool dynamic size.
+ * Async job pool dynamic size (non-blocking)
  * <br>
  */
 public class AsyncJobPool<T> extends BaseJobPool {

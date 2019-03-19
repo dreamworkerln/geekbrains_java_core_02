@@ -1,4 +1,4 @@
-package ru.home.geekbrains.java.core_02.client;
+package ru.home.geekbrains.java.core_02.lesson06.client;
 
 import org.apache.log4j.Logger;
 
@@ -14,11 +14,18 @@ import java.util.function.Consumer;
 
 public class EchoClient extends Thread  {
 
+
+    // =======================================================================
+
+
+
+
     private static final Logger log = Logger.getLogger(MethodHandles.lookup().lookupClass());
 
     private String ip;
     private int port;
     private SocketChannel channel;
+
 
     private Consumer<String> onMessage;
     private Consumer<Boolean> onConnectionState;
@@ -34,24 +41,49 @@ public class EchoClient extends Thread  {
 
     @Override
     public void start() {
-        try {
 
-            channel = SocketChannel.open();
-            channel.connect(new InetSocketAddress(ip, port));
-
-
-            connectionStateChange(true);
-
-        }
-        // will trigger exception in read()
-        catch (IOException ignored) {}
-
-
+        connect();
 
         super.start();
     }
 
 
+
+
+    @Override
+    public void run() {
+
+        try {
+
+            //noinspection InfiniteLoopStatement
+            while (!isInterrupted()) {
+
+                // will block here awaiting incoming message from server
+                String message = read();
+
+                // handle incoming message if not empty
+                if (!"".equals(message))
+                    messageReceived(message);
+
+                // auto reconnect
+                if (!channel.isConnected()) {
+
+                    Thread.sleep(5000);
+                    connect();// try to reconnect
+                }
+
+            }
+        }
+        catch(InterruptedException ignore){
+            log.trace("Thread " + Thread.currentThread().getName() + " has been interrupted");
+        }
+        
+        catch(Throwable e) {
+            log.error(e);
+        }
+
+
+    }
 
 
     public void send(String message) {
@@ -128,7 +160,8 @@ public class EchoClient extends Thread  {
                     bodyReadied += buffer.limit();
                 }
 
-                buffer.clear(); // clear buffer
+                // clear buffer
+                buffer.clear();
 
                 // server finished transmission
                 if (contentLength == bodyReadied) {
@@ -136,17 +169,21 @@ public class EchoClient extends Thread  {
                 }
             }
 
-            // signalling about server disconnected
-            // ClosedChannelException may occurred by it's own
+            // Signalling about server disconnected
+            // remember, ClosedChannelException may occurred by it's own
             if (count == -1)
                 throw new ClosedChannelException();
 
         }
         catch (ClosedChannelException e) {
 
+
+            // Sure that channel is closed
+            // (channel сам не выставляет channel.connected = false при падении сервера)
+            try {channel.close();} catch (IOException ignore) {}
+
             log.info("Disconnected from server");
             connectionStateChange(false);
-            interrupt();
         }
         catch (IOException e) {
             log.error(e);
@@ -155,28 +192,31 @@ public class EchoClient extends Thread  {
         return outputStream.toString();
     }
 
-    @Override
-    public void run() {
 
-        //noinspection InfiniteLoopStatement
-        while (!interrupted()) {
-            String message = read();
+    /**
+     * Connect to server
+     */
+    private void connect() {
 
-            // exit in middle
-            if (interrupted())
-                break;
+        try {
+            channel = SocketChannel.open();
+            channel.connect(new InetSocketAddress(ip, port));
+            connectionStateChange(true);
 
-            messageReceived(message);
         }
+        catch (IOException ignored) {}
+
     }
 
-    public void disconnect() {
+
+
+    public void close() {
         try {
 
             interrupt();
             channel.close();
             // ???
-            
+
         } catch (Exception ignore) {}
 
     }
@@ -220,7 +260,10 @@ public class EchoClient extends Thread  {
     }
 
 
+    public void reconnect() {
 
+        if (!channel.isConnected())
+            connect();
 
-
+    }
 }
