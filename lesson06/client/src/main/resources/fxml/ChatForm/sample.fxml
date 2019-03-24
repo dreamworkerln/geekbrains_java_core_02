@@ -12,6 +12,7 @@
 
 
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.control.PasswordField?>
 <VBox fx:id="main"
       alignment="center"
       xmlns="http://javafx.com/javafx/8.0.60"
@@ -24,7 +25,13 @@
 
     <BorderPane>
         <left>
+
+            <HBox fx:id="AuthPanel" >
                 <Button fx:id="btnConnect" onAction="#connect" text="Connect" />
+                <TextField  promptText="Логин" fx:id="loginField"/>
+                <PasswordField promptText="Пароль" fx:id="passwordField" />
+            </HBox> 
+
         </left>
         <center>
             <Label fx:id="label" text='  "Hope for the best, but prepare for the worst"  '/>

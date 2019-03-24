@@ -20,10 +20,21 @@ public class App
 
         setupLog4J();
 
+
+        // Users:
+        //
+        // q1/qwerty1
+        // q2/qwerty2
+
+        AuthService.connect();
+
         new EchoServer(4321).start();
 
+        AuthService.disconnect();
 
         log.info("\n\n************************* STOP *************************");
+
+
     }
 
 

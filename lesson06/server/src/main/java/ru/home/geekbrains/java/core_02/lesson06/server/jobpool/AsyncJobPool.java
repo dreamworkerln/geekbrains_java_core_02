@@ -19,7 +19,7 @@ import java.util.function.Supplier;
 public class AsyncJobPool<T> extends BaseJobPool {
 
 
-    private ThreadPoolExecutor threadPool;
+    //private ThreadPoolExecutor threadPool;
 
     // On job done handler
     private Consumer<T> callback;
