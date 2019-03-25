@@ -5,11 +5,12 @@ import org.apache.log4j.Logger;
 import java.io.*;
 import java.lang.invoke.MethodHandles;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
-import java.nio.charset.StandardCharsets;
 import java.security.InvalidParameterException;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 public class EchoClient extends Thread  {
@@ -24,7 +25,12 @@ public class EchoClient extends Thread  {
 
     private String ip;
     private int port;
-    private SocketChannel channel;
+    private SocketChannel channel = SocketChannel.open();
+    private String login = "";
+    private String password = "";
+
+    private final Lock lock = new ReentrantLock();
+    private final Condition isWaiting = lock.newCondition();
 
 
     private Consumer<String> onMessage;
@@ -38,53 +44,15 @@ public class EchoClient extends Thread  {
     }
 
 
-
+    /*
     @Override
     public void start() {
 
-        connect();
+        reconnect();
 
         super.start();
     }
-
-
-
-
-    @Override
-    public void run() {
-
-        try {
-
-            //noinspection InfiniteLoopStatement
-            while (!isInterrupted()) {
-
-                // will block here awaiting incoming message from server
-                String message = read();
-
-                // handle incoming message if not empty
-                if (!"".equals(message))
-                    messageReceived(message);
-
-                // auto reconnect
-                if (!channel.isConnected()) {
-
-                    Thread.sleep(5000);
-                    connect();// try to reconnect
-                }
-
-            }
-        }
-        catch(InterruptedException ignore){
-            log.trace("Thread " + Thread.currentThread().getName() + " has been interrupted");
-        }
-        
-        catch(Throwable e) {
-            log.error(e);
-        }
-
-
-    }
-
+    */
 
     public void send(String message) {
 
@@ -117,7 +85,9 @@ public class EchoClient extends Thread  {
     }
 
 
-    private String read() {
+
+
+    private void readLoop() {
 
         int contentLength = -1;
         int bodyReadied = -1;
@@ -145,7 +115,7 @@ public class EchoClient extends Thread  {
                     if (buffer.limit() < 4)
                         throw new InvalidParameterException("Reading contentLength bytes != 4");
 
-                    // read contentLength
+                    // readLoop contentLength
                     contentLength = buffer.getInt();
 
                     // write remaining data to outChannel
@@ -165,7 +135,16 @@ public class EchoClient extends Thread  {
 
                 // server finished transmission
                 if (contentLength == bodyReadied) {
-                    return outputStream.toString();
+                    String message = outputStream.toString();
+
+                    // reset buffer and outputStream
+                    contentLength = -1;
+                    outputStream.reset();
+
+                    // Display message to user
+                    // (handle incoming message if not empty)
+                    if (!"".equals(message))
+                        messageReceived(message);
                 }
             }
 
@@ -176,6 +155,13 @@ public class EchoClient extends Thread  {
 
         }
         catch (ClosedChannelException e) {
+
+        }
+        catch (IOException e) {
+            log.error(e);
+        }
+        finally {
+
             // Sure that channel is closed
             // (channel сам не выставляет channel.connected = false при падении сервера)
             try {channel.close();} catch (IOException ignore) {}
@@ -183,30 +169,63 @@ public class EchoClient extends Thread  {
             log.info("Disconnected from server");
             connectionStateChange(false);
         }
-        catch (IOException e) {
+
+    }
+
+
+
+
+    @Override
+    public void run() {
+
+        try {
+
+            //noinspection InfiniteLoopStatement
+            while (!isInterrupted()) {
+
+
+                // await if not connected
+                if(!channel.isConnected()) {
+                    lock.lock();
+                    isWaiting.await(); // waiting here
+                    lock.unlock();
+                }
+
+                boolean isConnected = connect_internal();
+                connectionStateChange(isConnected);
+
+                // Ок, подключились
+                if (channel.isConnected()) {
+
+                    // Authenticate on server
+                    authenticate();
+
+                    // Read awaiting amd readLoop messages in loop from server (til disconnect)
+                    // (will block here)
+                    readLoop();
+                }
+            }
+        }
+        catch(InterruptedException ignore){
+            log.trace("Thread " + Thread.currentThread().getName() + " has been interrupted");
+        }
+
+        catch(Throwable e) {
             log.error(e);
         }
 
-        return outputStream.toString();
-    }
-
-
-    /**
-     * Connect to server
-     */
-    private void connect() {
-
-        try {
-            channel = SocketChannel.open();
-            channel.connect(new InetSocketAddress(ip, port));
-            connectionStateChange(true);
-
-        }
-        catch (IOException ignored) {}
 
     }
 
 
+
+    public void connect() {
+
+        // Told thread to reconnect if needed
+        lock.lock();
+        isWaiting.signal();
+        lock.unlock();
+    }
 
     public void close() {
         try {
@@ -217,6 +236,13 @@ public class EchoClient extends Thread  {
 
         } catch (Exception ignore) {}
 
+    }
+
+
+    public void setCredentals(String login, String password) {
+
+        this.login = login;
+        this.password = password;
     }
 
 
@@ -258,10 +284,34 @@ public class EchoClient extends Thread  {
     }
 
 
-    public void reconnect() {
 
-        if (!channel.isConnected())
-            connect();
+    /**
+     * Connect to server
+     */
+    private boolean connect_internal() {
 
+        boolean result = false;
+
+        try {
+
+            channel = SocketChannel.open();
+            channel.connect(new InetSocketAddress(ip, port));
+
+            result = true;
+
+        }
+        catch (IOException ignored) {}
+
+
+        return result;
     }
+
+
+    private void authenticate() {
+
+        send(String.format("/auth %1$s %2$s", login, password));
+    }
+
+
+
 }

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
 import java.security.InvalidParameterException;
@@ -20,6 +21,10 @@ class ClientWrapper {
     private int cid;
     private SocketChannel channel; // client channel
 
+    private boolean isAuthenticated = false;
+    private String login;
+    private String password;
+
     BiConsumer<ClientWrapper, String> onMessage;
     Consumer<ClientWrapper> onDisconnect;
 
@@ -28,6 +33,8 @@ class ClientWrapper {
     public ClientWrapper(int cid, SocketChannel channel) {
         this.cid = cid;
         this.channel = channel;
+
+        //this.login = Integer.toString(this.cid);
 
     }
 
@@ -97,23 +104,33 @@ class ClientWrapper {
                     contentLength = -1;
                     outputStream.reset();
 
-                    // tell server about message
-                    onMessage.accept(this, message);
+                    try {
+                        // tell server about message
+                        onMessage.accept(this, message);
+                    }
+                    // Internal Server error 500 alike ...
+                    catch (Exception e) {
+
+                        log.error("IOException: ", e);
+                    }
                 }
             }
 
-        } catch (Exception e) {
+        }
+        catch (ClosedChannelException ignored) {}
+        catch (Exception e) {
             log.error("IOException: ", e);
         }
+        finally {
 
-        // disconnect client
-        try {
-            channel.close();
-        } catch (Exception ignored) {}
+            log.info("Client " + this.getCid() + " disconnected");
 
-        // Оповестим сервер о том, что клиент отключился
-        onDisconnect.accept(this);
+            // disconnect client
+            try {channel.close();} catch (Exception ignored) {}
 
+            // Оповестим сервер о том, что клиент отключился
+            onDisconnect.accept(this);
+        }
         return null;
     }
 
@@ -160,4 +177,34 @@ class ClientWrapper {
     }
 
 
+    public String getLogin() {
+        return login;
+    }
+
+//    public void setLogin(String login) {
+//        this.login = login;
+//    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public void setCredentals(String login, String password) {
+
+        this.login = login;
+        this.password = password;
+    }
+
+
+    public boolean isAuthenticated() {
+        return isAuthenticated;
+    }
+
+    public void setAuthenticated(boolean authenticated) {
+        isAuthenticated = authenticated;
+    }
 }

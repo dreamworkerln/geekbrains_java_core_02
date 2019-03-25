@@ -2,11 +2,9 @@ package ru.home.geekbrains.java.core_02.lesson06.client.gui;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import org.apache.log4j.Logger;
 import ru.home.geekbrains.java.core_02.lesson06.client.EchoClient;
@@ -24,6 +22,17 @@ public class Controller {
 
     @FXML
     public Label label;
+
+    @FXML
+    public TextField loginField;
+
+
+
+    @FXML
+    public PasswordField passwordField;
+
+    @FXML
+    public HBox AuthPanel;
 
     @FXML
     ImageView imageView;
@@ -67,7 +76,8 @@ public class Controller {
     // Btn connect pressed
     public void connect(ActionEvent actionEvent) {
 
-        client.reconnect();
+        client.setCredentals(loginField.getText(), passwordField.getText());
+        client.connect();
     }
 
 
@@ -106,8 +116,11 @@ public class Controller {
         // https://stackoverflow.com/a/31444897
         // FX textarea must be accessed on FX thread.
         javafx.application.Platform.runLater(
-                () -> textArea.appendText("Server connected: " + Boolean.toString(connected) + "\n"));
-
+                () -> {
+                    textArea.appendText("Server connected: " + Boolean.toString(connected) + "\n");
+                    AuthPanel.setVisible(!connected);
+                    AuthPanel.setMaxWidth(!connected ? 600 : 0 );
+                });
 
     }
 
