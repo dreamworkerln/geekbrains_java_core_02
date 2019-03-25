@@ -176,8 +176,6 @@ public class EchoClient extends Thread  {
 
         }
         catch (ClosedChannelException e) {
-
-
             // Sure that channel is closed
             // (channel сам не выставляет channel.connected = false при падении сервера)
             try {channel.close();} catch (IOException ignore) {}
