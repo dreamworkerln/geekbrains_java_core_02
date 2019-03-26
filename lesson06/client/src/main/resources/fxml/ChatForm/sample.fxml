@@ -2,22 +2,28 @@
 
 <?import java.net.URL?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?scenebuilder-stylesheet Styles.css?>
-<?import javafx.scene.control.Label?>
 
+<!--<ListView fx:id="clientList" managed="true" visible="true"/>-->
+<!--<HBox alignment="CENTER">-->
+<!--<Button fx:id="btnConnect" onAction="#connectHandler" text="Connect" />-->
+<!--<Label fx:id="label" text='   "Hope for the best, but prepare for the worst"   '/>-->
+<!--<HBox HBox.hgrow="ALWAYS" maxWidth="Infinity" alignment="BASELINE_RIGHT">-->
+<!--&lt;!&ndash;fitHeight="150.0" fitWidth="200.0" layoutX="61.0" layoutY="83.0" pickOnBounds="true"&ndash;&gt;-->
+<!--<ImageView fx:id="imageView" fitHeight="30" fitWidth="200.0" preserveRatio="true" />-->
+<!--</HBox>-->
+<!--</HBox>-->
 
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.control.PasswordField?>
-<VBox fx:id="main"
-      alignment="center"
-      xmlns="http://javafx.com/javafx/8.0.60"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="ru.home.geekbrains.java.core_02.lesson06.client.gui.Controller">
+<VBox fx:id="main" alignment="center" HBox.hgrow="ALWAYS" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.home.geekbrains.java.core_02.lesson06.client.gui.Controller">
 
     <stylesheets>
         <URL value="@Styles.css" />
@@ -26,42 +32,33 @@
     <BorderPane>
         <left>
 
-            <HBox fx:id="AuthPanel" >
-                <Button fx:id="btnConnect" onAction="#connect" text="Connect" />
-                <TextField  promptText="Логин" fx:id="loginField"/>
-                <PasswordField promptText="Пароль" fx:id="passwordField" />
-            </HBox> 
+            <HBox fx:id="AuthPanel">
+                <Button fx:id="btnConnect" onAction="#connectHandler" text="Connect" />
+                <TextField fx:id="loginField" promptText="Логин" text="q1" />
+                <PasswordField fx:id="passwordField" promptText="Пароль" text="qwerty1" />
+            </HBox>
 
         </left>
         <center>
-            <Label fx:id="label" text='  "Hope for the best, but prepare for the worst"  '/>
+            <Label fx:id="label" text="  &quot;Hope for the best, but prepare for the worst&quot;  " />
         </center>
         <right>
             <ImageView fx:id="imageView" fitHeight="30" fitWidth="200.0" preserveRatio="true" />
         </right>
     </BorderPane>
 
+    <HBox VBox.vgrow="ALWAYS">
+        <VBox HBox.hgrow="ALWAYS">
+            <HBox VBox.vgrow="ALWAYS">
+                <TextArea fx:id="textArea" editable="false" prefWidth="600" promptText="" text="" HBox.hgrow="ALWAYS" />
 
+                <ListView fx:id="clientList" onMouseClicked="#listViewMouseClickHandler" HBox.hgrow="ALWAYS" />
+            </HBox>
 
-    <TextArea fx:id="textArea" editable="false" promptText="" text="" VBox.vgrow="ALWAYS" />
-
-    <HBox>
-        <TextField fx:id="textField" onAction="#sendMsg" promptText="Enter message ..." HBox.hgrow="ALWAYS" />
-        <Button fx:id="btnSend" onAction="#sendMsg" text="Send" />
+            <HBox>
+                <TextField fx:id="textField" onAction="#sendMsgHandler" promptText="Enter message ..." HBox.hgrow="ALWAYS" />
+                <Button fx:id="btnSend" onAction="#sendMsgHandler" text="Send" />
+            </HBox>
+        </VBox>
     </HBox>
 </VBox>
-
-
-
-
-
-        <!--<HBox alignment="CENTER">-->
-        <!--<Button fx:id="btnConnect" onAction="#connect" text="Connect" />-->
-        <!--<Label fx:id="label" text='   "Hope for the best, but prepare for the worst"   '/>-->
-
-
-        <!--<HBox HBox.hgrow="ALWAYS" maxWidth="Infinity" alignment="BASELINE_RIGHT">-->
-        <!--&lt;!&ndash;fitHeight="150.0" fitWidth="200.0" layoutX="61.0" layoutY="83.0" pickOnBounds="true"&ndash;&gt;-->
-        <!--<ImageView fx:id="imageView" fitHeight="30" fitWidth="200.0" preserveRatio="true" />-->
-        <!--</HBox>-->
-        <!--</HBox>-->

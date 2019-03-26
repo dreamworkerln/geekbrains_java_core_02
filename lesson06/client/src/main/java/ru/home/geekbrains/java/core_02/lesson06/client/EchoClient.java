@@ -1,5 +1,6 @@
 package ru.home.geekbrains.java.core_02.lesson06.client;
 
+import com.sun.javafx.image.ByteToBytePixelConverter;
 import org.apache.log4j.Logger;
 
 import java.io.*;
@@ -8,17 +9,17 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.security.InvalidParameterException;
+import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 public class EchoClient extends Thread  {
 
 
     // =======================================================================
-
-
 
 
     private static final Logger log = Logger.getLogger(MethodHandles.lookup().lookupClass());
@@ -34,7 +35,12 @@ public class EchoClient extends Thread  {
 
 
     private Consumer<String> onMessage;
+
     private Consumer<Boolean> onConnectionState;
+
+//    private Consumer<List<String>> onClientListUploaded;
+//
+//    private BiConsumer<String,Boolean> onClientListChanged;
 
 
 
@@ -58,7 +64,6 @@ public class EchoClient extends Thread  {
 
         if (!channel.isConnected())
             return;
-
 
         try {
 
@@ -89,15 +94,16 @@ public class EchoClient extends Thread  {
 
     private void readLoop() {
 
-        int contentLength = -1;
-        int bodyReadied = -1;
-        int count;
+        int bodyLength = -1;  // length of single message(body)
+        int bodyReadied = -1; // currently readied body size
+        int dataSize;         // total amount of bytes readied from server to buffer
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        //WritableByteChannel outChannel = Channels.newChannel(outputStream);
 
         try {
 
-            WritableByteChannel outChannel = Channels.newChannel(outputStream);
+
 
             ByteBuffer buffer = ByteBuffer.allocate(64 * 1024);
             //ByteBuffer buffer = ByteBuffer.allocate(4);
@@ -105,65 +111,78 @@ public class EchoClient extends Thread  {
 
             // reading from buffer till all data readied (may need several cycles)
             // ClosedChannelException || count == -1   mean disconnected from server
-            while ((count = channel.read(buffer)) > 0) {
+            while ((dataSize = channel.read(buffer)) > 0) {
+
 
                 buffer.flip(); // switch buffer
 
-                // Initial Read first 4 bytes - get body length
-                if (contentLength == -1) {
+                // Here we have readied several messages to buffer
+                // or readied only part of one message
+                while (buffer.remaining() > 0) {
 
-                    if (buffer.limit() < 4)
-                        throw new InvalidParameterException("Reading contentLength bytes != 4");
+                    // Initial Read first 4 bytes - get body length
+                    if (bodyReadied == -1) {
 
-                    // readLoop contentLength
-                    contentLength = buffer.getInt();
+                        // Не хватает оставшихся байтов в буффере, чтобы прочесть из него int
+                        // Начинаем дальше читать из сокета в буфер
+                        if (buffer.remaining() < Integer.BYTES) {
+                            break;
+                        }
 
-                    // write remaining data to outChannel
-                    outChannel.write(buffer);
-                    bodyReadied = buffer.limit() - Integer.BYTES;
+                        // header contains body length int(4 bytes)
+                        // get message body length
+                        bodyLength = buffer.getInt();
+
+                        // writing remaining data to outputStream (not exceeding bodyLength)
+                        byte[] chunk = new byte[Math.min(buffer.remaining(), bodyLength)];
+                        buffer.get(chunk);
+                        outputStream.write(chunk);
+                        bodyReadied = chunk.length;
+                    }
+                    // Next readings
+                    else {
+
+                        // write next body chunk to outputStream
+                        byte[] chunk = new byte[Math.min(buffer.remaining(), bodyLength - bodyReadied)];
+                        buffer.get(chunk);
+                        outputStream.write(chunk);
+                        bodyReadied += chunk.length;
+                    }
+
+                    // get whole single message
+                    if (bodyReadied == bodyLength) {
+
+                        String message = outputStream.toString();
+
+                        // reset bodyReadied and outputStream
+                        bodyReadied = -1;
+                        outputStream.reset();
+
+                        // Display message to user
+                        // (handle incoming message if not empty)
+                        if (!"".equals(message))
+                            messageReceived(message);
+                    }
                 }
-                // Next readings
-                else {
+                // left shift remaining bytes in buffer
+                buffer.compact();
 
-                    // write next body chunk to outChannel
-                    outChannel.write(buffer);
-                    bodyReadied += buffer.limit();
-                }
-
-                // clear buffer
-                buffer.clear();
-
-                // server finished transmission
-                if (contentLength == bodyReadied) {
-                    String message = outputStream.toString();
-
-                    // reset buffer and outputStream
-                    contentLength = -1;
-                    outputStream.reset();
-
-                    // Display message to user
-                    // (handle incoming message if not empty)
-                    if (!"".equals(message))
-                        messageReceived(message);
-                }
             }
 
             // Signalling about server disconnected
             // remember, ClosedChannelException may occurred by it's own
-            if (count == -1)
-                throw new ClosedChannelException();
+            //  if (dataSize == -1)
+            //      throw new ClosedChannelException();
 
         }
-        catch (ClosedChannelException e) {
-
-        }
+        catch (ClosedChannelException ignore) {}
         catch (IOException e) {
             log.error(e);
         }
         finally {
 
             // Sure that channel is closed
-            // (channel сам не выставляет channel.connected = false при падении сервера)
+            // (channel сам не делает channel.connected = false при насильственном разрыве связи)
             try {channel.close();} catch (IOException ignore) {}
 
             log.info("Disconnected from server");
@@ -200,7 +219,7 @@ public class EchoClient extends Thread  {
                     // Authenticate on server
                     authenticate();
 
-                    // Read awaiting amd readLoop messages in loop from server (til disconnect)
+                    // Read messages in loop from server (till disconnected from server)
                     // (will block here)
                     readLoop();
                 }
@@ -266,6 +285,22 @@ public class EchoClient extends Thread  {
         this.onConnectionState = onConnectionState;
 
     }
+
+    /*
+    public void addClientListUploadListener(Consumer<List<String>> onClientListUploaded) {
+
+       this.onClientListUploaded = onClientListUploaded;
+
+    }
+
+    public void addClientListChangedListener(BiConsumer<String,Boolean> onClientListChanged) {
+
+        this.onClientListChanged = onClientListChanged;
+    }
+    */
+
+
+
 
 
     // ----------------------------------------------------------------------------

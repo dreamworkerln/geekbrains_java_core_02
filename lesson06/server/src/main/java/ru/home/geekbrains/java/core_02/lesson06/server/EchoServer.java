@@ -1,14 +1,18 @@
 package ru.home.geekbrains.java.core_02.lesson06.server;
 
 import org.apache.log4j.Logger;
-import ru.home.geekbrains.java.core_02.lesson06.server.jobpool.AsyncJobPool;
+import ru.home.geekbrains.java.core_02.lesson06.server.entities.User;
+import ru.home.geekbrains.java.core_02.lesson06.server.entities.Connection;
+import ru.home.geekbrains.java.core_02.lesson06.server.entities.ConnectionList;
+import ru.home.geekbrains.java.core_02.lesson06.server.entities.GuestConnectionList;
+import ru.home.geekbrains.java.core_02.lesson06.server.utils.DAOCrutch;
+import ru.home.geekbrains.java.core_02.lesson06.server.utils.jobpool.AsyncJobPool;
 
 import java.io.*;
 import java.lang.invoke.MethodHandles;
 import java.net.InetSocketAddress;
 import java.nio.channels.*;
 import java.util.Map;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntUnaryOperator;
 import java.util.regex.Matcher;
@@ -26,14 +30,17 @@ public class EchoServer  {
 
     // Non-negative AtomicInteger incrementator
     private static IntUnaryOperator AtomicNonNegativeIntIncrementator = (i) -> i == Integer.MAX_VALUE ? 0 : i + 1;
-    // client id generator
-    private static final AtomicInteger clientIdGen =  new AtomicInteger();
+    // connection id generator
+    private static final AtomicInteger connectionIdGen =  new AtomicInteger();
 
     // connection list
-    private ClientList clientList = new ClientList();
+    private ConnectionList connectionList = new ConnectionList();
 
+    // Connection list with unauthenticated clients
+    private GuestConnectionList guestList = new GuestConnectionList();
+
+    // Server socket
     private ServerSocketChannel serverChannel;
-
 
 
 
@@ -58,35 +65,38 @@ public class EchoServer  {
     public void start() {
 
         try {
+
             //noinspection InfiniteLoopStatement
             while (true) {
 
                 // wait on new connection on serverChannel.accept()
                 SocketChannel channel = serverChannel.accept();
 
-                // Generate unique cid (client id) for client
-                int cid = clientIdGen.getAndUpdate(AtomicNonNegativeIntIncrementator);
+                // Generate unique cid (connection id) for connection
+                int cid = connectionIdGen.getAndUpdate(AtomicNonNegativeIntIncrementator);
 
-                ClientWrapper client = new ClientWrapper(cid, channel);
-                client.onMessage = this::onClientMessage;
-                client.onDisconnect = this::onClientDisconnect;
+                Connection connection = new Connection(cid, channel);
+                connection.addHandlers(this::requestHandler, this::disconnectHandler);
 
-                // Do not accept client due to MAX_POOL_SIZE
+                // Do not accept connection due to MAX_POOL_SIZE
                 if (requestPool.size() > EchoServer.MAX_POOL_SIZE) {
 
-                    client.send("GTFO");
-                    client.close();
+                    connection.send("GTFO");
+                    connection.close();
 
                     continue;
                 }
 
-                clientList.put(client.getCid(), client);
+                // Do not add unauthenticated clients connections to connectionList
+                // Instead add them to GuestList
+                guestList.put(connection);
 
                 // Proceed client request in requestPool thread
-                requestPool.add(client::start);
+                // maybe недо-client will want to authenticate
+                requestPool.add(connection::start);
             }
         }
-        // on client disconnected
+        // on connection disconnected
         catch(ClosedByInterruptException ignored) {}
         catch (Exception e) {
             log.error("Can't accept client connection ", e);
@@ -100,34 +110,43 @@ public class EchoServer  {
 
 
 
+    private String makeClientList(Connection source) {
 
+        StringBuilder sb = new StringBuilder();
 
-    private void onClientMessage(ClientWrapper client, String message) {
+        sb.append("/clientlist ");
 
-        parseClientMessage(client, message);
-    }
+        for (Map.Entry<String,Connection> entry : connectionList.getLoginIterable()) {
+            sb.append(entry.getKey()+ "\n");
+        }
 
-
-
-    private void onClientDisconnect(ClientWrapper client) {
-
-        clientList.remove(client.getCid());
-        broadcast(client, "disconnected: " + client.getLogin());
+        return sb.toString();
     }
 
 
 
 
     // Broadcasting
-    private Void broadcast(ClientWrapper sender, String message) {
+    private Void broadcast(Connection source, String message) {
 
-        for (Map.Entry<Integer,ClientWrapper> entry : clientList) {
+        for (Map.Entry<Integer,Connection> entry : connectionList) {
 
-            entry.getValue().send(message);
+            User recipient = entry.getValue().getUser();
+            User sender = source.getUser();
+
+            // Не посылаем сообщение получателю, если он добавил отправителя в черный список
+            if (!recipient.getBlackList().contains(sender.getLogin())) {
+
+                entry.getValue().send(message);
+            }
         }
         return null;
     }
 
+
+    /**
+     * Closing server
+     */
     private void close() {
         try {
             serverChannel.close();
@@ -140,85 +159,164 @@ public class EchoServer  {
 
 
 
-    private void parseClientMessage(ClientWrapper client, String message) {
+    private void requestHandler(Connection connection, String message) {
 
+        try {
 
-        // 1. Auth
-        String regex = "^/auth\\s(\\w+)\\s(\\w+)$";
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(message);
+            // 1. Auth
+            String regex = "^/auth\\s(\\w+)\\s(\\w+)$";
+            Pattern pattern = Pattern.compile(regex);
+            Matcher matcher = pattern.matcher(message);
 
-        String login;
-        String password;
+            if (matcher.find()) {
+                log.trace("Full match: " + matcher.group(0));
 
-        if (matcher.find()) {
-            log.trace("Full match: " + matcher.group(0));
+                if (matcher.groupCount() == 2) {
 
-            if (matcher.groupCount() == 2) {
+                    String login = matcher.group(1);
+                    String password = matcher.group(2);
 
-                login = matcher.group(1);
-                password = matcher.group(2);
+                    User user = DAOCrutch.loadUser(login, password);
 
-                //ToDo load user credentials from DB
+                    if (  user!= null &&
+                          !connectionList.containsLogin(login) && //запретить множественный вход
+                          connection.isConnected()) { // случайно не сдох по пути аутентификации
 
-                if (AuthService.getNickByLoginAndPass(login, password) &&
-                    !clientList.containsLogin(login)) { //запретить множественный вход
+                        connection.setUser(user);
 
-                    client.setCredentals(login, password);
-                    client.setAuthenticated(true);
-                    clientList.updateLogin(client.getCid());
+                        // move user connection from guestList to connectionList
+                        guestList.remove(connection);
+                        connectionList.put(connection);
 
-                    broadcast(client,"connected: " + client.getLogin());
+                        broadcast(connection, "connected: " + user.getLogin());
+                        broadcast(connection, makeClientList(connection)); // send user list
+                    }
+                    // Unauthenticated - disconnect connection
+                    else {
+                        connectionList.remove(connection.getCid());
+                        connection.send("NOT AUTHENTICATED");
+                        connection.close(); // immediately disconnect
+                    }
                 }
-                // Unauthenticated - disconnect client
-                else {
-                    clientList.remove(client.getCid());
-                    client.send("NOT AUTHENTICATED");
-                    client.close(); // immediately disconnect
+                return;
+            }
+
+            // Other requests
+
+            // if not authenticated - no more commands allowed - disconnect
+            if (connection.getUser() == null) {
+                connection.send("NOT AUTHENTICATED");
+                connection.close();
+                return;
+            }
+
+
+            // 2. Unicast - private message
+            regex = "^/p\\s(\\w+)\\s(.*)$";
+            pattern = Pattern.compile(regex);
+            matcher = pattern.matcher(message);
+
+            if (matcher.find()) {
+                log.trace("Full match: " + matcher.group(0));
+
+                if (matcher.groupCount() == 2) {
+
+                    String login = matcher.group(1);
+                    String msg = matcher.group(2);
+
+                    Connection dest = connectionList.getByLogin(login);
+
+                    if (dest != null) {
+
+                        User sender = connection.getUser();
+                        User recipient = dest.getUser();
+
+                        // Не посылаем сообщение получателю, если он добавил отправителя в черный список
+                        if (!recipient.getBlackList().contains(sender.getLogin())) {
+
+                            msg = connection.getUser().getLogin() + ": " + msg;
+                            dest.send(msg);
+                        }
+                        else {
+                            msg = "YOU ARE BANNED GTFO ASSHOLE!";
+                            connection.send(msg);
+                        }
+                    }
+
                 }
+                return;
             }
-            return;
-        }
-
-        // if not authenticated - disconnect - no more commands allowed
-        if (!client.isAuthenticated()) {
-            client.send("NOT AUTHENTICATED");
-            client.close();
-            return;
-        }
 
 
-        // 1. Unicast - private message
-        regex = "^/p\\s(\\w+)\\s(\\w+)$";
-        pattern = Pattern.compile(regex);
-        matcher = pattern.matcher(message);
 
-        String msg;
 
-        if (matcher.find()) {
-            log.trace("Full match: " + matcher.group(0));
+            // 2. blacklist work
+            regex = "^/(ban|uban)\\s(\\w+)$";
+            pattern = Pattern.compile(regex);
+            matcher = pattern.matcher(message);
 
-            if (matcher.groupCount() == 2) {
+            if (matcher.find()) {
+                log.trace("Full match: " + matcher.group(0));
 
-                login = matcher.group(1);
-                msg = matcher.group(2);
+                if (matcher.groupCount() == 2) {
 
-                ClientWrapper c = clientList.getByLogin(login);
+                    String action = matcher.group(1);
+                    String login = matcher.group(2);
 
-                if (c != null)
-                    msg  = client.getLogin() + ": " + msg;
-                    c.send(msg);
+                    User user = connection.getUser();
+
+                    if (action.equals("ban")) {
+                        user.getBlackList().add(login);
+                        DAOCrutch.banUser(user, login);
+                        connection.send(makeClientList(connection)); // send user list
+
+                        // PERMABAN
+                        if (user.getLogin().equals(login)) {
+                            connection.send("PERMABANNED");
+                            connection.close();
+                        }
+
+
+                        //
+
+                    }
+                    else if (action.equals("uban")) {
+                        user.getBlackList().remove(login);
+                        DAOCrutch.unBanUser(user, login);
+                        connection.send(makeClientList(connection)); // send user list
+                    }
+                }
+                return;
             }
-            return;
+
+
+
+
+
+            // 3. default: broadcast message
+            // Broadcast in different ThreadPool due to slowloris clients
+            final String tmp = connection.getUser().getLogin() + ": " + message;
+            pushPool.add(() -> broadcast(connection, tmp));
+
         }
-
-
-        // default: broadcast message
-        // Broadcast in different ThreadPool due to slowloris clients
-        final String tmp  = client.getLogin() + ": " + message;
-        pushPool.add(() -> broadcast(client, tmp));
+        catch(Exception e) {
+            log.error(e);
+        }
     }
 
 
+
+    private void disconnectHandler(Connection connection) {
+
+        if (connection.getUser() != null) {
+            connectionList.remove(connection.getCid());
+            broadcast(connection, "disconnected: " + connection.getUser().getLogin());
+            broadcast(connection, makeClientList(connection));
+
+        }
+
+        // guestList has self-vacuuming feature (with auto disconnection by login timeout)
+        // no need to disconnect / remove from guestList unauthenticated clients
+    }
 
 }

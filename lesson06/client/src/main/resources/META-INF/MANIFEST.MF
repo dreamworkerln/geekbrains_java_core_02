@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Main-Class: ru.home.geekbrains.java.core_02.lesson06.client.gui.ChatFo
+ rm
+
