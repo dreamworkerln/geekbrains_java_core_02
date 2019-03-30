@@ -1,6 +1,8 @@
 package ru.home.geekbrains.java.core_02.lesson06.server;
 
 import org.apache.log4j.Logger;
+import ru.home.geekbrains.java.core_02.lesson06.server.utils.DAOCrutch;
+
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -20,17 +22,17 @@ public class App
 
         setupLog4J();
 
-
         // Users:
         //
         // q1/qwerty1
         // q2/qwerty2
+        // q3/qwerty3
 
-        AuthService.connect();
+        DAOCrutch.connect();
 
         new EchoServer(4321).start();
 
-        AuthService.disconnect();
+        DAOCrutch.disconnect();
 
         log.info("\n\n************************* STOP *************************");
 

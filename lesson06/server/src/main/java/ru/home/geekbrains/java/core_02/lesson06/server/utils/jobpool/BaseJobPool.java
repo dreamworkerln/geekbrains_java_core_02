@@ -1,4 +1,4 @@
-package ru.home.geekbrains.java.core_02.lesson06.server.jobpool;
+package ru.home.geekbrains.java.core_02.lesson06.server.utils.jobpool;
 
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.locks.ReentrantLock;

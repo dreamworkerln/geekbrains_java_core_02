@@ -62,6 +62,18 @@
 }
 
 
+.list-view {
+    -fx-background-insets: 0;
+    -fx-font-family: Consolas;
+    -fx-control-inner-background: #434241;
+    -fx-highlight-fill: #335851;
+    -fx-highlight-text-fill: #D0F0E5;
+    -fx-text-fill: #D0F0E5;
+    -fx-prompt-text-fill: #7d978d;
+    -fx-font-size: 16px;
+}
+
+
 .scroll-bar{
     -fx-background-color: #434241;
     -fx-background-radius: 2em;

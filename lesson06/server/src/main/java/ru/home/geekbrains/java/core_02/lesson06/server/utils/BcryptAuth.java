@@ -1,4 +1,4 @@
-package ru.home.geekbrains.java.core_02.lesson06.server;
+package ru.home.geekbrains.java.core_02.lesson06.server.utils;
 
 import org.apache.log4j.Logger;
 import org.springframework.security.crypto.bcrypt.BCrypt;
