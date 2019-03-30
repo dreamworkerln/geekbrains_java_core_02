@@ -14,7 +14,7 @@ import java.util.function.IntUnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class EchoServer  {
+private class EchoServer  {
 
     private static final Logger log = Logger.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -189,11 +189,12 @@ public class EchoServer  {
 
 
         // 1. Unicast - private message
-        regex = "^/p\\s(\\w+)\\s(\\w+)$";
+        regex = "^/p\\s(\\w+)\\s(.*)$";
         pattern = Pattern.compile(regex);
         matcher = pattern.matcher(message);
 
         String msg;
+
 
         if (matcher.find()) {
             log.trace("Full match: " + matcher.group(0));
