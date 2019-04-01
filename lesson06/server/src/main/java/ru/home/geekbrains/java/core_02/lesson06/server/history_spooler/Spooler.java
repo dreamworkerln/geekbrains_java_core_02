@@ -119,7 +119,7 @@ public class Spooler extends Thread {
             // Timer
             while (!isInterrupted()) {
 
-                Thread.sleep(1000000000);
+                Thread.sleep(10000);
 
                 try {
 
@@ -131,6 +131,8 @@ public class Spooler extends Thread {
 
 
             }
+            log.info("Stopping spool ...");
+
         }
         catch (Exception e) {
             log.error(e);
