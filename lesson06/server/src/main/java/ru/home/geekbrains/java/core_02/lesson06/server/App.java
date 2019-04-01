@@ -1,7 +1,9 @@
 package ru.home.geekbrains.java.core_02.lesson06.server;
 
 import org.apache.log4j.Logger;
-import ru.home.geekbrains.java.core_02.lesson06.server.utils.DAOCrutch;
+import ru.home.geekbrains.java.core_02.lesson06.server.entities.dao.DAOCrutch;
+import ru.home.geekbrains.java.core_02.lesson06.server.history_spooler.Spooler;
+import ru.home.geekbrains.java.core_02.lesson06.server.history_spooler.SpoolerWrapper;
 
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
@@ -29,6 +31,9 @@ public class App
         // q3/qwerty3
 
         DAOCrutch.connect();
+
+        // start spooler
+        SpoolerWrapper.INSTANCE.getSpooler().start();
 
         new EchoServer(4321).start();
 

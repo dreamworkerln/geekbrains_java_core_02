@@ -5,7 +5,10 @@ import ru.home.geekbrains.java.core_02.lesson06.server.entities.User;
 import ru.home.geekbrains.java.core_02.lesson06.server.entities.Connection;
 import ru.home.geekbrains.java.core_02.lesson06.server.entities.ConnectionList;
 import ru.home.geekbrains.java.core_02.lesson06.server.entities.GuestConnectionList;
-import ru.home.geekbrains.java.core_02.lesson06.server.utils.DAOCrutch;
+import ru.home.geekbrains.java.core_02.lesson06.server.entities.dao.DAOCrutch;
+import ru.home.geekbrains.java.core_02.lesson06.server.history_spooler.HistoryMsg;
+import ru.home.geekbrains.java.core_02.lesson06.server.history_spooler.Spooler;
+import ru.home.geekbrains.java.core_02.lesson06.server.history_spooler.SpoolerWrapper;
 import ru.home.geekbrains.java.core_02.lesson06.server.utils.jobpool.AsyncJobPool;
 
 import java.io.*;
@@ -13,6 +16,7 @@ import java.lang.invoke.MethodHandles;
 import java.net.InetSocketAddress;
 import java.nio.channels.*;
 import java.util.Map;
+import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.IntUnaryOperator;
 import java.util.regex.Matcher;
@@ -43,11 +47,19 @@ public class EchoServer  {
     private ServerSocketChannel serverChannel;
 
 
+    private static final AtomicInteger msgIdGen =  new AtomicInteger();
+
+
+
+
 
     public EchoServer(int port) {
         try {
             serverChannel = ServerSocketChannel.open();
             serverChannel.socket().bind(new InetSocketAddress(port));
+
+            // set last history.id + 1
+            msgIdGen.set(SpoolerWrapper.INSTANCE.getSpooler().getLastId() + 1);
 
             log.info("TCP server listening on " +
                      serverChannel.socket().getInetAddress().getHostAddress() + ":" +
@@ -188,8 +200,25 @@ public class EchoServer  {
                         guestList.remove(connection);
                         connectionList.put(connection);
 
+                        // broadcast - new usser connected
                         broadcast(connection, "connected: " + user.getLogin());
                         broadcast(connection, makeClientList(connection)); // send user list
+
+
+                        // Завалим его сообщениями из history
+                        for(Map.Entry<Integer,HistoryMsg> entry : SpoolerWrapper.INSTANCE.getSpooler().getHistory().entrySet()) {
+
+                            String tmp = entry.getValue().getLogin() + ": " + entry.getValue().getMessage();
+                            connection.send(tmp);
+                        }
+
+                        // и новыми сообщениями из buffer (если там есть)
+                        for(Map.Entry<Integer,HistoryMsg> entry : SpoolerWrapper.INSTANCE.getSpooler().getBuffer().entrySet()) {
+
+                            String tmp = entry.getValue().getLogin() + ": " + entry.getValue().getMessage();
+                            connection.send(tmp);
+                        }
+
                     }
                     // Unauthenticated - disconnect connection
                     else {
@@ -296,6 +325,11 @@ public class EchoServer  {
             // 3. default: broadcast message
             // Broadcast in different ThreadPool due to slowloris clients
             final String tmp = connection.getUser().getLogin() + ": " + message;
+
+            // Add message to history
+            SpoolerWrapper.INSTANCE.getSpooler().add(
+                    new HistoryMsg(msgIdGen.getAndIncrement(), connection.getUser().getLogin(), message));
+
             pushPool.add(() -> broadcast(connection, tmp));
 
         }

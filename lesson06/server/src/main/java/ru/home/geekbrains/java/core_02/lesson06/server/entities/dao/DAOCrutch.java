@@ -1,7 +1,8 @@
-package ru.home.geekbrains.java.core_02.lesson06.server.utils;
+package ru.home.geekbrains.java.core_02.lesson06.server.entities.dao;
 
 import org.apache.log4j.Logger;
 import ru.home.geekbrains.java.core_02.lesson06.server.entities.User;
+import ru.home.geekbrains.java.core_02.lesson06.server.utils.BcryptAuth;
 
 import java.lang.invoke.MethodHandles;
 import java.sql.*;
@@ -119,4 +120,8 @@ public class DAOCrutch {
         catch (Exception ignored) {}
     }
 
+
+    public static Connection getConnection() {
+        return connection;
+    }
 }
